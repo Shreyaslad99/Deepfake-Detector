@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DeepScan | Deepfake Detector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080810;
+      --surface: #12121e;
+      --surface2: #1a1a2e;
+      --border: #2a2a45;
+      --accent: #7c6af7;
+      --accent2: #a78bfa;
+      --accent-glow: rgba(124, 106, 247, 0.35);
+      --text: #e2e2f0;
+      --muted: #6b6b8a;
+      --fake: #e74c3c;
+      --real: #2ecc71;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 64px;
+      background: rgba(18, 18, 30, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo .dot {
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); background: var(--surface2); }
+
+    .btn-login {
+      color: var(--text) !important;
+      background: transparent !important;
+      border: 1px solid var(--border) !important;
+      padding: 7px 18px !important;
+      border-radius: 8px !important;
+      font-size: 0.88rem !important;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
+    }
+
+    .btn-login:hover {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 10px var(--accent-glow) !important;
+      background: rgba(124,106,247,0.08) !important;
+      color: var(--accent2) !important;
+    }
+
+    .btn-signup {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border: none !important;
+      padding: 7px 18px !important;
+      border-radius: 8px !important;
+      font-size: 0.88rem !important;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s !important;
+    }
+
+    .btn-signup:hover {
+      background: var(--accent2) !important;
+      box-shadow: 0 0 16px var(--accent-glow) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 64px 20px 32px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(124,106,247,0.12);
+      border: 1px solid rgba(124,106,247,0.3);
+      color: var(--accent2);
+      font-size: 0.78rem;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      letter-spacing: 0.05em;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Card */
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      padding: 24px 20px 60px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      transition: box-shadow 0.3s;
+    }
+
+    .card:hover { box-shadow: 0 12px 60px rgba(124,106,247,0.12); }
+
+    /* Upload area */
+    .upload-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 44px 20px;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    }
+
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent);
+      background: rgba(124,106,247,0.05);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .upload-icon {
+      width: 48px; height: 48px;
+      background: var(--surface2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .upload-area:hover .upload-icon {
+      background: rgba(124,106,247,0.2);
+      transform: scale(1.08);
+    }
+
+    .upload-area .main-text { font-size: 0.95rem; color: var(--text); font-weight: 500; }
+    .upload-area .sub-text  { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    #file-input { display: none; }
+
+    #preview-img, #preview-vid {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 10px;
+      margin-top: 18px;
+      display: none;
+      border: 1px solid var(--border);
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Analyze button */
+    .analyze-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent), #9b59b6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .analyze-btn:hover:not(:disabled) {
+      opacity: 0.92;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px var(--accent-glow);
+    }
+
+    .analyze-btn:active:not(:disabled) { transform: translateY(0); }
+
+    .analyze-btn:disabled {
+      background: var(--surface2);
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      margin: 22px auto 0;
+      width: 34px; height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Result */
+    #result {
+      margin-top: 24px;
+      padding: 22px;
+      border-radius: 12px;
+      display: none;
+      text-align: center;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    #result.AI-IMAGE, #result.AI-VIDEO { background: rgba(231,76,60,0.08);  border: 1px solid rgba(231,76,60,0.35); }
+    #result.REAL-IMAGE, #result.REAL-VIDEO { background: rgba(46,204,113,0.08); border: 1px solid rgba(46,204,113,0.35); }
+    #result.ERROR { background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+
+    .result-icon { font-size: 2.2rem; margin-bottom: 8px; }
+
+    #result-label { font-size: 1.9rem; font-weight: 800; letter-spacing: 0.05em; }
+    #result.AI-IMAGE #result-label, #result.AI-VIDEO #result-label { color: var(--fake); }
+    #result.REAL-IMAGE #result-label, #result.REAL-VIDEO #result-label { color: var(--real); }
+    #result.ERROR #result-label { color: var(--muted); font-size: 1.1rem; }
+
+    #result-confidence { color: var(--muted); margin-top: 6px; font-size: 0.9rem; }
+
+    .progress-track {
+      width: 100%; height: 8px;
+      background: var(--surface2);
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%; width: 0%;
+      border-radius: 4px;
+      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #result.AI-IMAGE .progress-fill, #result.AI-VIDEO .progress-fill { background: var(--fake); }
+    #result.REAL-IMAGE .progress-fill, #result.REAL-VIDEO .progress-fill { background: var(--real); }
+
+    #result-breakdown { margin-top: 12px; font-size: 0.8rem; color: var(--muted); }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-logo" href="#">
+      <span class="dot"></span>
+      DeepScan
+    </a>
+    <div class="nav-links">
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Docs</a>
+      <a href="#" class="btn-login">Log in</a>
+      <a href="#" class="btn-signup">Sign up</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="badge">AI-Powered Detection</div>
+    <h1>Detect Deepfakes<br/>Instantly</h1>
+    <p>Upload an image or video and our Vision Transformer model will analyze whether it's AI-generated or real.</p>
+  </section>
+
+  <main>
+    <div class="card">
+      <label class="upload-area" for="file-input" id="upload-area">
+        <div class="upload-icon">
+          <svg width="22" height="22" fill="none" stroke="var(--accent2)" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <span class="main-text" id="file-label">Click or drag an image or video here</span>
+        <span class="sub-text">JPG, PNG, WEBP, BMP, MP4, MOV, AVI, MKV</span>
+        <input type="file" id="file-input" accept="image/*,video/*" />
+      </label>
+
+      <img id="preview-img" alt="Preview" />
+      <video id="preview-vid" controls></video>
+
+      <button class="analyze-btn" id="submit-btn" disabled>Analyze</button>
+      <div class="spinner" id="spinner"></div>
+
+      <div id="result">
+        <div class="result-icon" id="result-icon"></div>
+        <div id="result-label"></div>
+        <div id="result-confidence"></div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div id="result-breakdown"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>© 2026 DeepScan · AI Image & Video Authenticity Detector</footer>
+
+  <script>
+    const fileInput    = document.getElementById('file-input');
+    const uploadArea   = document.getElementById('upload-area');
+    const previewImg   = document.getElementById('preview-img');
+    const previewVid   = document.getElementById('preview-vid');
+    const fileLabel    = document.getElementById('file-label');
+    const submitBtn    = document.getElementById('submit-btn');
+    const spinner      = document.getElementById('spinner');
+    const resultBox    = document.getElementById('result');
+    const progressFill = document.getElementById('progress-fill');
+
+    function loadFile(file) {
+      if (!file) return;
+      fileLabel.textContent = file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name;
+      const url = URL.createObjectURL(file);
+      previewImg.style.display = 'none';
+      previewVid.style.display = 'none';
+      if (file.type.startsWith('video/')) {
+        previewVid.src = url;
+        previewVid.style.display = 'block';
+      } else {
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+      }
+      submitBtn.disabled = false;
+      resultBox.style.display = 'none';
+      progressFill.style.width = '0%';
+    }
+
+    fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) { fileInput.files = e.dataTransfer.files; loadFile(file); }
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = file.type.startsWith('video/') ? 'Analyzing video...' : 'Analyzing image...';
+      spinner.style.display = 'block';
+      resultBox.style.display = 'none';
+      progressFill.style.width = '0%';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res  = await fetch('/predict-image', { method: 'POST', body: formData });
+        const data = await res.json();
+        spinner.style.display = 'none';
+
+        if (data.error) {
+          resultBox.className = 'ERROR';
+          resultBox.style.display = 'block';
+          document.getElementById('result-icon').textContent = '❌';
+          document.getElementById('result-label').textContent = 'Error';
+          document.getElementById('result-confidence').textContent = data.error;
+          document.getElementById('result-breakdown').textContent = '';
+        } else {
+          const cls = data.result.replace(' ', '-');
+          resultBox.className = cls;
+          resultBox.style.display = 'block';
+          document.getElementById('result-icon').textContent =
+            cls.startsWith('AI') ? '🚨' : '✅';
+          document.getElementById('result-label').textContent = data.result;
+          document.getElementById('result-confidence').textContent = `Confidence: ${data.overall_confidence}%`;
+          setTimeout(() => { progressFill.style.width = `${data.overall_confidence}%`; }, 50);
+          document.getElementById('result-breakdown').textContent =
+            `${data.breakdown.method} · Score: ${data.breakdown.transformer_model_prob}%`;
+        }
+      } catch {
+        spinner.style.display = 'none';
+        resultBox.className = 'ERROR';
+        resultBox.style.display = 'block';
+        document.getElementById('result-icon').textContent = '❌';
+        document.getElementById('result-label').textContent = 'Error';
+        document.getElementById('result-confidence').textContent = 'Request failed. Is the server running?';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Analyze Again';
+      }
+    });
+  </script>
+</body>
+</html>
