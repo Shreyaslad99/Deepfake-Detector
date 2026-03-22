@@ -1,1 +1,1 @@
-Deepfake detector usong ore trained python models , for intifying AI images,video and audio
+Deepfake detector using ore trained python models , for intifying AI images,video and audio
